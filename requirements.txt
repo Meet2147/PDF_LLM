@@ -4,3 +4,4 @@ langchain
 pickle4
 openai
 tiktoken
+faiss-cpu
