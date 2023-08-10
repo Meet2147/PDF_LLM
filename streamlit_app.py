@@ -9,7 +9,9 @@ from langchain.llms import OpenAI
 from langchain.callbacks import get_openai_callback
 import pickle
 import os
-
+from PIL import Image
+img = Image.open('pdf.png')
+st.beta_set_page_config(page_title="PDF LLM", page_icon=img)
 openai.api_key = st.secrets["OPENAI_API_KEY"]
   # Replace with your OpenAI API key
 
