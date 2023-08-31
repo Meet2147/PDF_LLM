@@ -20,7 +20,7 @@ with st.sidebar:
     # "[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/streamlit/llm-examples?quickstart=1)"
     st.title("📝 File Q&A with OpenAI")
 
-# st.title("📝 File Q&A with OpenAI")
+# st.title("📝 CG ChatGPT")
 pdf = st.sidebar.file_uploader("Upload a PDF file", type=("pdf",))
 if pdf:
     reader = PdfReader(pdf)
