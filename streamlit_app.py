@@ -18,7 +18,7 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 with st.sidebar:
     # "[View the source code](https://github.com/streamlit/llm-examples/blob/main/pages/1_File_Q%26A.py)"
     # "[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/streamlit/llm-examples?quickstart=1)"
-    st.title("📝 File Q&A with OpenAI")
+    st.title("📝 CG ChatGPT")
 
 # st.title("📝 CG ChatGPT")
 pdf = st.sidebar.file_uploader("Upload a PDF file", type=("pdf",))
