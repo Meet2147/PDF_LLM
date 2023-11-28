@@ -6,4 +6,4 @@ openai
 tiktoken
 faiss-cpu
 streamlit_chat
-
+openpyxl
