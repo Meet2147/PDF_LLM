@@ -10,10 +10,11 @@ import pandas as pd
 
 output_csv = "C:\\Users\\mejethwa\\Downloads\\PDF_LLM-main\\PDF_LLM-main\\example_file.csv"
 # Set up OpenAI API Key
-openai_api_key = st.sidebar.text_input(
-    label="#### Your OpenAI API key 👇",
-    placeholder="Paste your OpenAI API key here",
-    type="password")
+# openai_api_key = st.sidebar.text_input(
+#     label="#### Your OpenAI API key 👇",
+#     placeholder="Paste your OpenAI API key here",
+#     type="password")
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 if not openai_api_key:
     st.sidebar.warning("Please enter your OpenAI API key.")
