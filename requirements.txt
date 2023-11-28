@@ -5,3 +5,5 @@ pickle4
 openai
 tiktoken
 faiss-cpu
+streamlit_chat
+
