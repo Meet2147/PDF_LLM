@@ -7,6 +7,7 @@ from langchain.vectorstores import FAISS
 import tempfile
 import os
 import pandas as pd
+import openai
 
 output_csv = "C:\\Users\\mejethwa\\Downloads\\PDF_LLM-main\\PDF_LLM-main\\example_file.csv"
 # Set up OpenAI API Key
