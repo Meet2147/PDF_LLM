@@ -17,9 +17,9 @@ output_csv = "C:\\Users\\mejethwa\\Downloads\\PDF_LLM-main\\PDF_LLM-main\\exampl
 #     type="password")
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-if not openai_api_key:
-    st.sidebar.warning("Please enter your OpenAI API key.")
- # Setting the API key for the current session
+# if not openai_api_key:
+#     st.sidebar.warning("Please enter your OpenAI API key.")
+#  # Setting the API key for the current session
 
 uploaded_file = st.sidebar.file_uploader("Upload CSV or Excel", type=["csv", "xlsx"])
 
