@@ -1,198 +1,68 @@
 import streamlit as st
-import openai
-from PyPDF2 import PdfReader
+from streamlit_chat import message
 from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.text_splitter import CharacterTextSplitter
+from langchain.chat_models import ChatOpenAI
+from langchain.chains import ConversationalRetrievalChain
 from langchain.vectorstores import FAISS
-from langchain.chains.question_answering import load_qa_chain
-from langchain.llms import OpenAI
-from langchain.callbacks import get_openai_callback
-import pickle
+import tempfile
 import os
-from PIL import Image
-# img = Image.open('pdf.png')
-# st.beta_set_page_config(page_title="PDF LLM", page_icon=img)
-openai.api_key = st.secrets["OPENAI_API_KEY"]
-  # Replace with your OpenAI API key
+import pandas as pd
 
-with st.sidebar:
-    # "[View the source code](https://github.com/streamlit/llm-examples/blob/main/pages/1_File_Q%26A.py)"
-    # "[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/streamlit/llm-examples?quickstart=1)"
-    st.title("📝 CG ChatGPT")
+output_csv = "C:\\Users\\mejethwa\\Downloads\\PDF_LLM-main\\PDF_LLM-main\\example_file.csv"
+# Set up OpenAI API Key
+openai_api_key = st.sidebar.text_input(
+    label="#### Your OpenAI API key 👇",
+    placeholder="Paste your OpenAI API key here",
+    type="password")
 
-# st.title("📝 CG ChatGPT")
-pdf = st.sidebar.file_uploader("Upload a PDF file", type=("pdf",))
-if pdf:
-    reader = PdfReader(pdf)
+if not openai_api_key:
+    st.sidebar.warning("Please enter your OpenAI API key.")
+ # Setting the API key for the current session
 
-    # Read data from the file and put them into a variable called raw_text
-    raw_text = ''
-    for i, page in enumerate(reader.pages):
-        text = page.extract_text()
-        if text:
-            raw_text += text
+uploaded_file = st.sidebar.file_uploader("Upload CSV or Excel", type=["csv", "xlsx"])
 
-    # We need to split the text that we read into smaller chunks so that during information retrieval we don't hit the token size limits.
-    text_splitter = CharacterTextSplitter(
-        separator="\n",
-        chunk_size=1000,
-        chunk_overlap=200,
-        length_function=len,
-    )
-    chunks = text_splitter.split_text(raw_text)
-    store_name = pdf.name[:-4]
-        
-    if os.path.exists(f"{store_name}.pkl"):
-        with open(f"{store_name}.pkl", "rb") as f:
-            vectorstore = pickle.load(f)
-    else:
-        # Embedding (OpenAI methods)
+if uploaded_file:
+    try:
+        # Determine the file type and read accordingly
+        if uploaded_file.type == "text/csv":
+            df = pd.read_csv(uploaded_file)
+        elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+            df = pd.read_excel(uploaded_file)
+            df = df.to_csv(output_csv, index=False)
+        else:
+            st.error("Unsupported file type")
+            raise Exception("Unsupported file type")
+
+        # Assuming data to be in the first column
+        data = df[df.columns[0]].tolist()
+
         embeddings = OpenAIEmbeddings()
+        vectorstore = FAISS.from_documents(data, embeddings)
 
-        # Store the chunks part in db (vector)
-        vectorstore = FAISS.from_texts(chunks, embedding=embeddings)
+        chain = ConversationalRetrievalChain.from_llm(
+            llm=ChatOpenAI(temperature=0.0, model_name='gpt-3.5-turbo'),
+            retriever=vectorstore.as_retriever())
 
-        with open(f"{store_name}.pkl", "wb") as f:
-            pickle.dump(vectorstore, f)
+        if 'history' not in st.session_state:
+            st.session_state['history'] = []
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+        # Chat interface
+        container = st.container()
+        with container:
+            with st.form(key='my_form', clear_on_submit=True):
+                user_input = st.text_input("Query:", placeholder="Talk about your csv data here :)", key='input')
+                submit_button = st.form_submit_button(label='Send')
 
-# Display chat messages from history on app rerun
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+            if submit_button and user_input:
+                output = chain({"question": user_input, "chat_history": st.session_state['history']})
+                st.session_state['history'].append((user_input, output["answer"]))
 
-    # Load the question-answering chain
-    if query := st.chat_input("How may I help you?"):
-        st.session_state.messages.append({"role": "user", "content": query})
-        with st.chat_message("user"):
-            st.markdown(query)
+        response_container = st.container()
+        with response_container:
+            for i, (user_msg, bot_msg) in enumerate(st.session_state['history']):
+                message(user_msg, is_user=True, key=f'user_{i}', avatar_style="big-smile")
+                message(bot_msg, key=f'bot_{i}', avatar_style="thumbs")
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
 
-    
-        docs = vectorstore.similarity_search(query=query, k=3)
-        # st.write(docs)
-        
-        # OpenAI rank LNV process
-        llm = OpenAI(temperature=0)
-        chain = load_qa_chain(llm=llm, chain_type="stuff")
-        
-        with get_openai_callback() as cb:
-            with st.chat_message("assistant"):
-                message_placeholder = st.empty()
-                full_response = ""
-                response = chain.run(input_documents=docs, question=query)
-                if response:
-                    messages=[
-                    {"role": m["role"], "content": m["content"]}
-                    for m in st.session_state.messages
-                ],
-                stream=True,
-                
-                full_response += response
-                
-                message_placeholder.markdown(full_response + "▌")
-            message_placeholder.markdown(full_response)
-        st.session_state.messages.append({"role": "assistant", "content": full_response})
-          
-#         #     print(cb)
-#         # st.write("Bot:", response)
-# import streamlit as st
-# import openai
-# from PyPDF2 import PdfReader
-# from langchain.embeddings.openai import OpenAIEmbeddings
-# from langchain.text_splitter import CharacterTextSplitter
-# from langchain.vectorstores import FAISS
-# from langchain.chains.question_answering import load_qa_chain
-# from langchain.llms import OpenAI
-# from langchain.callbacks import get_openai_callback
-# import os
-# from PIL import Image
 
-# # Removed unused import 'pickle'
-
-# # img = Image.open('pdf.png')
-# # st.beta_set_page_config(page_title="PDF LLM", page_icon=img)
-
-# openai.api_key = st.secrets["OPENAI_API_KEY"]
-# # Replace with your OpenAI API key
-
-# with st.sidebar:
-#     # "[View the source code](https://github.com/streamlit/llm-examples/blob/main/pages/1_File_Q%26A.py)"
-#     # "[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/streamlit/llm-examples?quickstart=1)"
-#     st.title("📝 CG ChatGPT")
-
-# # st.title("📝 CG ChatGPT")
-# pdf = st.sidebar.file_uploader("Upload a PDF file", type=("pdf",))
-# if pdf:
-#     reader = PdfReader(pdf)
-
-#     # Read data from the file and put them into a variable called raw_text
-#     raw_text = ''
-#     for i, page in enumerate(reader.pages):
-#         text = page.extract_text()
-#         if text:
-#             raw_text += text
-
-#     # We need to split the text that we read into smaller chunks...
-#     text_splitter = CharacterTextSplitter(
-#         separator="\n",
-#         chunk_size=1000,
-#         chunk_overlap=200,
-#         length_function=len,
-#     )
-#     chunks = text_splitter.split_text(raw_text)
-#     store_name = pdf.name[:-4]
-        
-#     # Handling FAISS object serialization
-#     faiss_index_path = f"{store_name}_faiss.index"
-#     if os.path.exists(faiss_index_path):
-#         vectorstore = FAISS.load(faiss_index_path)
-#     else:
-#         # Embedding (OpenAI methods)
-#         embeddings = OpenAIEmbeddings()
-#         # Store the chunks part in db (vector)
-#         vectorstore = FAISS.from_texts(chunks, embedding=embeddings)
-#         vectorstore.save(faiss_index_path)
-
-#     if "messages" not in st.session_state:
-#         st.session_state.messages = []
-
-#     # Display chat messages from history on app rerun
-#     for message in st.session_state.messages:
-#         with st.chat_message(message["role"]):
-#             st.markdown(message["content"])
-
-#     # Load the question-answering chain
-#     if query := st.chat_input("How may I help you?"):
-#         st.session_state.messages.append({"role": "user", "content": query})
-#         with st.chat_message("user"):
-#             st.markdown(query)
-
-#         docs = vectorstore.similarity_search(query=query, k=3)
-#         # st.write(docs)
-        
-#         # OpenAI rank LNV process
-#         llm = OpenAI(temperature=0)
-#         chain = load_qa_chain(llm=llm, chain_type="stuff")
-        
-#         with get_openai_callback() as cb:
-#             with st.chat_message("assistant"):
-#                 message_placeholder = st.empty()
-#                 full_response = ""
-#                 response = chain.run(input_documents=docs, question=query)
-#                 if response:
-#                     messages=[
-#                         {"role": m["role"], "content": m["content"]}
-#                         for m in st.session_state.messages
-#                     ],
-#                     stream=True,
-                    
-#                     full_response += response
-                    
-#                     message_placeholder.markdown(full_response + "▌")
-#                 message_placeholder.markdown(full_response)
-#             st.session_state.messages.append({"role": "assistant", "content": full_response})
-          
-            # print(cb)
-            # st.write("Bot:", response)
