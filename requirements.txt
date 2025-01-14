@@ -1,6 +1,6 @@
 streamlit
 PyPDF2
-langchain
+langchain-community
 pickle4
 openai
 tiktoken
